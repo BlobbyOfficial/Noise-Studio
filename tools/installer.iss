@@ -17,9 +17,20 @@ SolidCompression=yes
 Source: "{#GetCurrentDir()}\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#GetCurrentDir()}\src\assets\*"; DestDir: "{app}\assets"; Flags: recursesubdirs createallsubdirs
 
+[Dirs]
+Name: "{userdocs}\NoiseStudio"
+Name: "{userdocs}\NoiseStudio\output"
+Name: "{userdocs}\NoiseStudio\output\images"
+Name: "{userdocs}\NoiseStudio\output\sound"
+
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 
 [Run]
+; Run the app after installation
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[Setup]
+LicenseFile=LICENSE
+

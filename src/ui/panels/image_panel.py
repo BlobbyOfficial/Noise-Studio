@@ -20,6 +20,9 @@ class ImagePanel:
         self.live_preview = True
         self.noise_type = "white"  # default noise type
 
+        # Whether we are running inside the UI (MainWindow will set this)
+        self.ui_enabled = False
+
         # Internal texture tag for Dear PyGui canvas
         self.texture_tag = "image_preview_texture"
 
@@ -87,29 +90,48 @@ class ImagePanel:
         # Flatten for Dear PyGui (normalized to 0-1)
         flat_image = image_data.flatten() / 255.0
 
-        # Step 3: Update Dear PyGui texture
-        if dpg.does_item_exist(self.texture_tag):
-            dpg.delete_item(self.texture_tag)
+        # Step 3: Update Dear PyGui texture (best-effort; skip if DPG isn't initialized or UI disabled)
+        if getattr(self, "ui_enabled", False):
+            try:
+                if dpg.does_item_exist(self.texture_tag):
+                    dpg.delete_item(self.texture_tag)
 
-        with dpg.texture_registry(show=False):
-            dpg.add_static_texture(
-                width=self.width,
-                height=self.height,
-                default_value=flat_image,
-                tag=self.texture_tag
-            )
+                with dpg.texture_registry(show=False):
+                    dpg.add_static_texture(
+                        width=self.width,
+                        height=self.height,
+                        default_value=flat_image,
+                        tag=self.texture_tag
+                    )
 
-        # Step 4: Draw image on canvas
-        if dpg.does_item_exist("image_preview_canvas"):
-            # Clear previous canvas content
-            dpg.delete_item("image_preview_canvas", children_only=True)
-            # Draw image directly into the existing drawlist
-            dpg.draw_image(
-                self.texture_tag,
-                pmin=(0, 0),
-                pmax=(self.width, self.height),
-                parent="image_preview_canvas"
-            )
+                # Step 4: Draw image on canvas
+                if dpg.does_item_exist("image_preview_canvas"):
+                    # Clear previous canvas content
+                    dpg.delete_item("image_preview_canvas", children_only=True)
+                    # Draw image directly into the existing drawlist
+                    dpg.draw_image(
+                        self.texture_tag,
+                        pmin=(0, 0),
+                        pmax=(self.width, self.height),
+                        parent="image_preview_canvas"
+                    )
+            except Exception:
+                # DearPyGui not available or not initialized in this environment; skip GUI updates
+                pass
+
+
+        # Auto-save generated image
+        try:
+            from utils.config import get_app_dirs
+            from PIL import Image
+            from datetime import datetime
+            dirs = get_app_dirs()
+            fname = dirs["images"] / f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            img = Image.fromarray(image_data)
+            img.save(fname)
+            print(f"Saved generated image to {fname}")
+        except Exception as exc:
+            print("Failed to auto-save image:", exc)
 
     # -------------------------
     # Live preview toggling
@@ -125,3 +147,17 @@ class ImagePanel:
     def get_current_image(self):
         """Return the currently generated image array for export."""
         return self.current_image
+
+    def save_to(self, path):
+        """Save the last generated image array to `path` (PIL will be used)."""
+        if self.current_image is None:
+            raise RuntimeError("No image generated")
+        try:
+            from PIL import Image
+            imgarr = np.clip(self.current_image * 255, 0, 255).astype('uint8')
+            if len(imgarr.shape) == 2:
+                imgarr = np.stack([imgarr] * 3, axis=-1)
+            Image.fromarray(imgarr).save(path)
+        except Exception as exc:
+            raise
+

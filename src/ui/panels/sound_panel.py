@@ -21,6 +21,9 @@ class SoundPanel:
         self.live_preview = True
         self.noise_type = "white"  # default noise type
 
+        # Whether we are running inside the UI (MainWindow will set this)
+        self.ui_enabled = False
+
         # Internal state
         self._current_audio = None
         self._stream = None
@@ -76,13 +79,27 @@ class SoundPanel:
             audio = audio / max_val
 
         self._current_audio = audio
+        # Auto-save generated audio
+        try:
+            from utils.config import get_app_dirs
+            from scipy.io.wavfile import write as wav_write
+            from datetime import datetime
+            dirs = get_app_dirs()
+            fname = dirs["sounds"] / f"sound_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
+            # normalize to int16
+            maxv = max(1.0, np.max(np.abs(audio)))
+            wav = (audio / maxv * 32767).astype('int16')
+            wav_write(str(fname), self.sample_rate, wav)
+            print(f"Saved generated audio to {fname}")
+        except Exception as exc:
+            print("Failed to auto-save audio:", exc)
         return audio
 
     # -------------------------
     # Playback
     # -------------------------
     def play_audio(self, sender=None, app_data=None):
-        """Play the generated audio noise with graceful error handling."""
+        """Play the generated audio noise with graceful error handling and autosave."""
         self.stop_audio()  # stop existing playback
 
         audio = self.generate_noise()
@@ -95,12 +112,19 @@ class SoundPanel:
                     dtype='float32'
                 )
                 self._stream.start()
+                # Play in a non-blocking way: write may block, but wrapping in try-catch
                 self._stream.write(audio.astype(np.float32))
                 print(f"Playing {self.noise_type} noise for {self.duration}s")
             except Exception as exc:
                 # Log and fail gracefully if audio device or stream creation fails
                 logging.error("Audio playback failed: %s", exc)
                 self._stream = None
+
+        # Non-GUI environments: nothing else to do here; GUI-specific actions happen in the UI code.
+        try:
+            pass
+        except Exception:
+            pass
 
     def stop_audio(self, sender=None, app_data=None):
         """Stop audio playback."""
@@ -134,3 +158,16 @@ class SoundPanel:
     def get_current_audio(self):
         """Return the current audio array for export."""
         return self._current_audio
+
+    def save_to(self, path):
+        """Save the last generated audio array to `path` in WAV format."""
+        if self._current_audio is None:
+            raise RuntimeError("No audio generated")
+        try:
+            from scipy.io.wavfile import write as wav_write
+            maxv = max(1.0, np.max(np.abs(self._current_audio)))
+            wav = (self._current_audio / maxv * 32767).astype('int16')
+            wav_write(path, self.sample_rate, wav)
+        except Exception:
+            raise
+

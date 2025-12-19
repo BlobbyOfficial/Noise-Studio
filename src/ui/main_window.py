@@ -15,6 +15,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 from ui import theme as ui_theme
+from utils.config import load_settings, save_settings, ensure_app_dirs, get_app_dirs
 
 
 class MainWindow:
@@ -23,6 +24,9 @@ class MainWindow:
     def __init__(self):
         self.sound_panel = SoundPanel()
         self.image_panel = ImagePanel()
+        # Tell panels that they are connected to the UI context so they can call DearPyGui safely
+        self.sound_panel.ui_enabled = True
+        self.image_panel.ui_enabled = True
         self.active_panel = "image"  # default panel
 
         # Fonts dictionary
@@ -34,6 +38,10 @@ class MainWindow:
     def run(self):
         """Initialize the UI and start Dear PyGui."""
         dpg.create_context()
+
+        # Ensure user directories exist and load settings
+        ensure_app_dirs()
+        self.settings = load_settings()
 
         self._setup_fonts()
 
@@ -47,16 +55,24 @@ class MainWindow:
 
         dpg.create_viewport(title="Noise Studio", width=1280, height=800, resizable=True)
 
-        self._setup_ui()
+        try:
+            self._setup_ui()
 
-        dpg.setup_dearpygui()
-        dpg.show_viewport()
+            dpg.setup_dearpygui()
+            dpg.show_viewport()
 
-        # Start animations
-        self._start_animations()
+            # Start animations
+            self._start_animations()
 
-        dpg.start_dearpygui()
-        dpg.destroy_context()
+            dpg.start_dearpygui()
+        except Exception as exc:
+            logging.exception("Unhandled exception in MainWindow.run: %s", exc)
+            raise
+        finally:
+            try:
+                dpg.destroy_context()
+            except Exception:
+                pass
 
     def _setup_fonts(self):
         """Load custom fonts safely using absolute paths and fallbacks."""
@@ -117,18 +133,18 @@ class MainWindow:
 
                 # Image panel controls
                 dpg.add_text("🖼️ Image")
-                dpg.add_slider_int(label="Width", default_value=self.image_panel.width, min_value=16, max_value=8192, callback=self._on_width_changed)
-                dpg.add_slider_int(label="Height", default_value=self.image_panel.height, min_value=16, max_value=8192, callback=self._on_height_changed)
-                dpg.add_checkbox(label="Live Preview", default_value=self.image_panel.live_preview, callback=self._on_image_live_preview_changed)
-                dpg.add_button(label="Generate Image Noise", callback=self.image_panel.on_generate_clicked)
+                dpg.add_slider_int(label="Width", default_value=self.image_panel.width, min_value=16, max_value=8192, callback=lambda s,a,u: self._safe_call(self._on_width_changed, s, a))
+                dpg.add_slider_int(label="Height", default_value=self.image_panel.height, min_value=16, max_value=8192, callback=lambda s,a,u: self._safe_call(self._on_height_changed, s, a))
+                dpg.add_checkbox(label="Live Preview", default_value=self.image_panel.live_preview, callback=lambda s,a,u: self._safe_call(self._on_image_live_preview_changed, s, a))
+                dpg.add_button(label="Generate Image Noise", callback=lambda s,a,u: self._safe_call(self.image_panel.on_generate_clicked, s, a, on_done=lambda: self._update_status("Image generated and saved")))
                 dpg.add_spacer()
 
                 # Sound panel controls
                 dpg.add_text("🔊 Sound")
-                dpg.add_slider_float(label="Duration (s)", default_value=self.sound_panel.duration, min_value=0.1, max_value=60, callback=self._on_duration_changed)
-                dpg.add_checkbox(label="Live Preview", default_value=self.sound_panel.live_preview, callback=self._on_sound_live_preview_changed)
-                dpg.add_button(label="Play Sound", callback=self.sound_panel.on_play_clicked)
-                dpg.add_button(label="Stop Sound", callback=self.sound_panel.on_stop_clicked)
+                dpg.add_slider_float(label="Duration (s)", default_value=self.sound_panel.duration, min_value=0.1, max_value=60, callback=lambda s,a,u: self._safe_call(self._on_duration_changed, s, a))
+                dpg.add_checkbox(label="Live Preview", default_value=self.sound_panel.live_preview, callback=lambda s,a,u: self._safe_call(self._on_sound_live_preview_changed, s, a))
+                dpg.add_button(label="Play Sound", callback=lambda s,a,u: self._safe_call(self.sound_panel.on_play_clicked, s, a, on_done=lambda: self._update_status("Playing sound")))
+                dpg.add_button(label="Stop Sound", callback=lambda s,a,u: self._safe_call(self.sound_panel.on_stop_clicked, s, a, on_done=lambda: self._update_status("Stopped")))
 
             # Central preview
             with dpg.group(horizontal=False):
@@ -139,8 +155,8 @@ class MainWindow:
 
             # Bottom panel selector with highlight animation
             with dpg.group(horizontal=True):
-                dpg.add_button(label="Sound Panel", callback=lambda: self.switch_panel("sound"), tag="btn_sound")
-                dpg.add_button(label="Image Panel", callback=lambda: self.switch_panel("image"), tag="btn_image")
+                dpg.add_button(label="Sound Panel", callback=lambda s,a,u: self._safe_call(self.switch_panel, "sound"), tag="btn_sound")
+                dpg.add_button(label="Image Panel", callback=lambda s,a,u: self._safe_call(self.switch_panel, "image"), tag="btn_image")
 
             # Right-hand properties panel
             with dpg.group(horizontal=False, horizontal_spacing=10):
@@ -149,8 +165,8 @@ class MainWindow:
                 dpg.add_combo(label="Noise Type", items=["white", "pink", "brown"], default_value=self.image_panel.noise_type, callback=lambda s,a,u: (self._set_noise_type(a), self._update_status(f"Noise type: {a}")))
                 dpg.add_text("Preview Controls")
                 dpg.add_separator()
-                dpg.add_button(label="Center Image", callback=lambda s,a,u: (self.image_panel.on_generate_clicked(), self._update_status("Image centered")))
-                dpg.add_button(label="Fit to View", callback=lambda s,a,u: (self.image_panel.on_generate_clicked(), self._update_status("Fitted to view")))
+                dpg.add_button(label="Center Image", callback=lambda s,a,u: self._safe_call(self.image_panel.on_generate_clicked, s, a, on_done=lambda: self._update_status("Image centered")))
+                dpg.add_button(label="Fit to View", callback=lambda s,a,u: self._safe_call(self.image_panel.on_generate_clicked, s, a, on_done=lambda: self._update_status("Fitted to view")))
                 dpg.add_spacer()
 
             # Bottom status bar
@@ -218,9 +234,11 @@ class MainWindow:
                 return
 
             with dpg.window(label="Settings", modal=True, tag="settings_window"):
-                dark = dpg.add_checkbox(label="Dark Theme", default_value=True)
-                dpg.add_input_int(label="Audio sample rate", default_value=self.sound_panel.sample_rate, callback=self._on_sample_rate_changed)
-                dpg.add_button(label="Apply", callback=lambda s,a,u: (ui_theme.apply_theme() if dpg.get_value(dark) else None, dpg.hide_item("settings_window")))
+                dark = dpg.add_checkbox(label="Dark Theme", default_value=(self.settings.get("theme","dark")=="dark"))
+                sample_input = dpg.add_input_int(label="Audio sample rate", default_value=self.settings.get("sample_rate", self.sound_panel.sample_rate))
+                live_preview_checkbox = dpg.add_checkbox(label="Enable Live Preview", default_value=self.settings.get("live_preview", True))
+                dpg.add_spacing()
+                dpg.add_button(label="Apply", callback=lambda s,a,u: self._safe_call(self._apply_settings, s, a, dark=dark, sample=sample_input, live=live_preview_checkbox))
         except Exception as exc:
             logging.error("Failed to open settings dialog: %s", exc)
 
@@ -230,6 +248,25 @@ class MainWindow:
             self._update_status(f"Sample rate set to {app_data}")
         except Exception:
             logging.warning("Invalid sample rate value: %s", app_data)
+
+    def _apply_settings(self, sender, app_data, dark, sample, live):
+        try:
+            theme_val = "dark" if dpg.get_value(dark) else "light"
+            sample_val = int(dpg.get_value(sample))
+            live_val = bool(dpg.get_value(live))
+            self.settings["theme"] = theme_val
+            self.settings["sample_rate"] = sample_val
+            self.settings["live_preview"] = live_val
+            save_settings(self.settings)
+            self.sound_panel.sample_rate = sample_val
+            self.image_panel.live_preview = live_val
+            if theme_val == "dark":
+                ui_theme.apply_theme()
+            self._update_status("Settings applied")
+            dpg.hide_item("settings_window")
+        except Exception as exc:
+            logging.error("Failed to apply settings: %s", exc)
+            self._update_status("Failed to apply settings")
 
     def _apply_shortcuts(self):
         """Register keyboard shortcuts (best-effort across DPG versions)."""
@@ -263,6 +300,11 @@ class MainWindow:
     def _set_noise_type(self, noise_type: str):
         self.image_panel.noise_type = noise_type
         self.sound_panel.noise_type = noise_type
+        # Trigger immediate live preview if enabled
+        if getattr(self.image_panel, "live_preview", False):
+            self._safe_call(self.image_panel.on_generate_clicked)
+        if getattr(self.sound_panel, "live_preview", False):
+            self._safe_call(self.sound_panel.on_play_clicked)
 
     def _set_seed(self, seed_value: int):
         try:
@@ -315,15 +357,36 @@ class MainWindow:
     # -------------------------
     # Export callbacks (optional, placeholder)
     # -------------------------
-    def on_export_image_clicked(self, sender, app_data):
+    def on_export_image_clicked(self, sender=None, app_data=None):
+        """Export the currently generated image to disk (best-effort).
+
+        Uses the configured Documents/NoiseStudio output folder if no file dialog available.
         """
-        Export the currently generated image to disk.
-        """
-        if hasattr(self.image_panel, 'texture_tag') and dpg.does_item_exist(self.image_panel.texture_tag):
-            # Here you would integrate with your export module
-            print(f"Exporting image of size {self.image_panel.width}x{self.image_panel.height}")
-        else:
-            print("No image generated to export.")
+        try:
+            dirs = get_app_dirs()
+            if self.image_panel.get_current_image() is None:
+                self._update_status("No image to export")
+                return
+            out = dirs["images"] / f"export_image_{__import__('datetime').datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            self.image_panel.save_to(out)
+            self._update_status(f"Exported image to {out}")
+        except Exception as exc:
+            logging.exception("Failed to export image: %s", exc)
+            self._update_status("Failed to export image")
+
+    def on_export_sound_clicked(self, sender=None, app_data=None):
+        """Export the currently generated audio to disk (best-effort)."""
+        try:
+            dirs = get_app_dirs()
+            if self.sound_panel.get_current_audio() is None:
+                self._update_status("No audio to export")
+                return
+            out = dirs["sounds"] / f"export_sound_{__import__('datetime').datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
+            self.sound_panel.save_to(str(out))
+            self._update_status(f"Exported audio to {out}")
+        except Exception as exc:
+            logging.exception("Failed to export audio: %s", exc)
+            self._update_status("Failed to export audio")
 
     def on_export_sound_clicked(self, sender, app_data):
         """
