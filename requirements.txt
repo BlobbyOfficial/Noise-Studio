@@ -1,0 +1,6 @@
+dearpygui==2.1.1           # GUI framework (updated)
+numpy>=1.24.0               # Image/audio data handling
+sounddevice>=0.4.7          # Real-time audio playback
+scipy>=1.10.0               # Optional, for advanced noise generation (pink/brown)
+Pillow>=10.0.0              # Optional, for exporting images
+pytest>=7.0.0               # Testing framework

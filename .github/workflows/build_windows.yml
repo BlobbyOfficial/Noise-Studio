@@ -1,0 +1,42 @@
+name: Build Windows installer
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==5.11
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --add-data "src/assets;assets" --name "NoiseStudio" src/app.py
+      - name: Install Inno Setup (if needed)
+        run: choco install innosetup -y
+        shell: cmd
+      - name: Create Installer with Inno Setup
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" tools\installer.iss
+        continue-on-error: true
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            dist/NoiseStudio.exe
+            *.exe
+            *.msi
+            *.zip
+            NoiseStudio_Installer.exe
