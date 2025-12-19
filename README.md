@@ -1,7 +1,11 @@
 Noise Studio
 ============
 
+[![Download Installer](https://img.shields.io/badge/Download-Installer-blue?logo=windows&style=for-the-badge)](https://github.com/blobbyofficial/noise-studio/releases/latest)
+
 Procedural image and audio noise generator.
+
+> Download the Windows installer from the badge above — the installer will create `Documents/NoiseStudio` and the `output/images` and `output/sound` folders and place generated files there.
 
 Quick setup
 -----------
