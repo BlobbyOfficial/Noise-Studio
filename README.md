@@ -1,6 +1,6 @@
 # Noise Studio
 
-[![Download Installer](https://img.shields.io/badge/Download-Installer-blue?logo=windows&style=for-the-badge)]([https://github.com/blobbyofficial/noise-studio/releases/latest](https://github.com/BlobbyOfficial/Noise-Studio/releases/download/v0.1-beta/NoiseStudio_Installer_v0.1-beta.exe))
+[![Download Installer](https://img.shields.io/badge/Download-Installer-blue?logo=windows&style=for-the-badge)](https://github.com/BlobbyOfficial/Noise-Studio/releases/download/v0.1-beta/NoiseStudio_Installer_v0.1-beta.exe)
 
 Compact procedural image & audio noise generator.
 
