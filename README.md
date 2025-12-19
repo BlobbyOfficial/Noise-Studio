@@ -1,65 +1,87 @@
-Noise Studio
-============
+# Noise Studio
 
 [![Download Installer](https://img.shields.io/badge/Download-Installer-blue?logo=windows&style=for-the-badge)](https://github.com/blobbyofficial/noise-studio/releases/latest)
 
-Procedural image and audio noise generator.
+Compact procedural image & audio noise generator.
 
-> Download the Windows installer from the badge above — the installer will create `Documents/NoiseStudio` and the `output/images` and `output/sound` folders and place generated files there.
+---
 
-Quick setup
------------
-- Create and activate the virtual environment (if you haven't already).
-- Install dependencies:
+## Quick start (Windows)
 
-```bash
+1. Download the **Installer** from the Releases page (recommended):
+   - The installer (`NoiseStudio_Installer.exe`) will register the app and create the folder `Documents/NoiseStudio` with `output/images` and `output/sound` subfolders for exported assets.
+
+2. Or run the portable single-file executable:
+   - Download `dist/NoiseStudio.exe` from the latest release and run it directly.
+
+> Tip: prefer the Installer for a smoother experience; the portable EXE is fine for testing.
+
+---
+
+## From source (developers)
+
+1. Create and activate a virtual environment (Windows example):
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-Optional: download a bold font used by the UI headers:
+2. Run the app:
 
-```bash
-python tools/download_fonts.py
+```powershell
+python -m src.app
+# or
+python src\app.py
 ```
 
-Build a Windows executable locally
----------------------------------
-- Create and activate a virtualenv on Windows.
-- Run the helper: `tools\build_exe.bat` to produce `dist\NoiseStudio.exe` (and optionally an installer if Inno Setup is installed).
+3. Build a Windows executable locally:
 
-CI / Automated installer builds
-------------------------------
-- A GitHub Actions workflow is included (`.github/workflows/build_windows.yml`) that will run on a tag push (v*) or manually.
-- The workflow uses PyInstaller to build a single-file executable and attempts to run Inno Setup to build an installer.
-
-Create a GitHub repository and publish a release
-------------------------------------------------
-1. Create a new repository on GitHub (https://github.com/new) named `noise-studio`, or run:
-
-```bash
-# replace USERNAME with your GitHub username
-git remote add origin git@github.com:USERNAME/noise-studio.git
-git branch -M main
-git push -u origin main
+```powershell
+tools\build_exe.bat
 ```
 
-2. Tag a release to trigger the Windows build & release workflow:
+- The helper will create `dist/NoiseStudio.exe` using PyInstaller. If Inno Setup is installed on the machine, `tools\installer.iss` can be used to create an installer `NoiseStudio_Installer.exe`.
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+---
 
-The release workflow will attempt to build the exe and upload it as a release asset.
+## Releases & Assets
 
-Testing
--------
-Run:
+- When publishing a release (tag: `v0.1-beta`, mark as **Pre-release**), attach a Windows installer `.exe` for the best user experience. If no installer is available, attach the `dist/NoiseStudio.exe` portable executable.
+- The GitHub username for this project is **blobbyofficial** (links and site assume this account).
+
+---
+
+## Website
+
+- The repository includes a simple `index.html` that fetches and renders the README from GitHub at runtime. The site points users to the Releases page for downloads and provides a quick summary of the project.
+
+---
+
+## Tests & CI
+
+- Run the test suite with:
 
 ```bash
 pytest
 ```
 
-CI
---
-A GitHub Actions workflow runs tests on push and PR automatically (`.github/workflows/ci.yml`).
+- GitHub Actions workflows (`.github/workflows/`) run tests on pushes/PRs and can produce Windows builds on tagged releases.
+
+---
+
+## Reporting bugs & contributing
+
+- Please open issues on the repo (include OS, Python version, steps to reproduce, and logs if available).
+- Pull requests are welcome — keep changes focused and include tests where applicable.
+
+---
+
+## License
+
+This project includes a `LICENSE` file — see it for license details.
+
+---
+
+*Maintained by blobbyofficial — thanks for testing the beta!*
