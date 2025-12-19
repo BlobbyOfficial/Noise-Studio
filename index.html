@@ -2,17 +2,129 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=https://blobbyofficial.github.io/noise-studio/">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Redirecting…</title>
-  <style>html,body{height:100%;margin:0;background:#071429;color:#e6eef8;font-family:Inter,system-ui,Arial,sans-serif;display:flex;align-items:center;justify-content:center}a{color:#7dd3fc}</style>
+  <title>Noise Studio — Project</title>
+  <style>
+    /* Embedded minimal styles — no external files */
+    :root{
+      --bg:#0f1720; --card:#0b1220; --text:#e6eef8; --muted:#98a3b3;
+    }
+    html,body{height:100%;margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#041018);color:var(--text);}
+    .wrap{max-width:900px;margin:5vh auto;padding:28px;background:rgba(255,255,255,0.02);border-radius:12px;box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    h1{margin:0 0 8px;font-size:1.6rem}
+    p{color:var(--muted);line-height:1.4}
+    ul{padding-left:1.1rem}
+    a{color:#7dd3fc;text-decoration:none}
+    a:hover{text-decoration:underline}
+    .meta{margin-top:18px;font-size:0.9rem;color:var(--muted)}
+    .btn{display:inline-block;padding:8px 12px;background:#0ea5a4;border-radius:8px;color:#001; font-weight:600}
+
+    /* Readme content */
+    #readme-controls{display:flex;gap:12px;align-items:center;margin:12px 0}
+    #readme-content{margin-top:12px;background:rgba(255,255,255,0.01);padding:18px;border-radius:8px;color:var(--text)}
+    #readme-content h1,#readme-content h2,#readme-content h3{color:#fff}
+    #readme-content p{color:var(--muted)}
+    #readme-content pre{background:#021019;padding:12px;border-radius:6px;overflow:auto}
+    #readme-content code{background:#021019;padding:2px 6px;border-radius:4px}
+    #updated{font-size:0.85rem;color:var(--muted)}
+  </style>
 </head>
 <body>
-  <div>
-    <h1>Redirecting to Noise Studio website…</h1>
-    <p>If you are not redirected automatically, <a href="https://blobbyofficial.github.io/noise-studio/">click here</a> to go to the site.</p>
-    <p>Direct docs link (fallback): <a href="docs/index.html">docs/index.html</a></p>
+  <div class="wrap">
+    <h1>Noise Studio</h1>
+    <p>Procedural image & audio noise generator.</p>
+
+    <div id="readme-controls">
+      <a class="btn" href="https://github.com/blobbyofficial/noise-studio/releases/latest">Download (Latest release)</a>
+      <button id="refreshBtn" class="btn">Refresh README</button>
+      <span id="updated" class="meta" aria-live="polite"></span>
+    </div>
+
+    <div id="readme-content" aria-live="polite">Loading README…</div>
+
+    <p class="meta"><strong>Note:</strong> The page fetches and renders the project <code>README.md</code> from GitHub so the content updates when the README changes.</p>
   </div>
-  <script>location.replace('https://blobbyofficial.github.io/noise-studio/');</script>
+
+  <script>
+    (function(){
+      const README_URL = 'https://raw.githubusercontent.com/BlobbyOfficial/Noise-Studio/refs/heads/master/README.md';
+      const RAW_BASE = README_URL.replace(/README\.md$/, '');
+
+      function escapeHtml(s){
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      function mdToHtml(md){
+        // Escape then simple conversions
+        let s = escapeHtml(md);
+
+        // Code blocks ``` ```
+        s = s.replace(/```([\s\S]*?)```/g, function(m, code){ return '<pre><code>'+escapeHtml(code)+'</code></pre>'; });
+
+        // Inline code `code`
+        s = s.replace(/`([^`]+)`/g, function(m,c){ return '<code>'+escapeHtml(c)+'</code>'; });
+
+        // Images ![alt](url)
+        s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m,alt,src){
+          const resolved = src.match(/^https?:/i) ? src : (RAW_BASE + src.replace(/^\.\//,'').replace(/^\//,''));
+          return '<img alt="'+escapeHtml(alt)+'" src="'+resolved+'" style="max-width:100%;height:auto;border-radius:6px;" />';
+        });
+
+        // Links [text](url)
+        s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m,t,u){
+          return '<a href="'+u+'" target="_blank" rel="noopener">'+t+'</a>';
+        });
+
+        // Headings
+        s = s.replace(/^######\s*(.*)$/gm, '<h6>$1</h6>');
+        s = s.replace(/^#####\s*(.*)$/gm, '<h5>$1</h5>');
+        s = s.replace(/^####\s*(.*)$/gm, '<h4>$1</h4>');
+        s = s.replace(/^###\s*(.*)$/gm, '<h3>$1</h3>');
+        s = s.replace(/^##\s*(.*)$/gm, '<h2>$1</h2>');
+        s = s.replace(/^#\s*(.*)$/gm, '<h1>$1</h1>');
+
+        // Bold & italics
+        s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        // Unordered lists
+        s = s.replace(/(^|\n)(?:[ \t]*[-*+]\s+.*(?:\n|$))+?/g, function(block){
+          const items = block.trim().split(/\n/).map(function(line){ return '<li>'+line.replace(/^[ \t]*[-*+]\s+/, '')+'</li>'; }).join('');
+          return '\n<ul>' + items + '</ul>\n';
+        });
+
+        // Paragraphs: split by two newlines
+        s = s.split(/\n{2,}/).map(function(block){
+          if (/^<h\d|^<ul|^<pre|^<img/.test(block.trim())) return block;
+          return '<p>' + block.replace(/\n/g, ' ') + '</p>';
+        }).join('\n');
+
+        return s;
+      }
+
+      async function fetchAndRender(){
+        const el = document.getElementById('readme-content');
+        const updatedEl = document.getElementById('updated');
+        try{
+          const r = await fetch(README_URL, {cache: 'no-store'});
+          if (!r.ok) throw new Error('Fetch failed: '+r.status);
+          const txt = await r.text();
+          el.innerHTML = mdToHtml(txt);
+          const lm = r.headers.get('last-modified');
+          updatedEl.textContent = lm ? 'Last updated: ' + new Date(lm).toLocaleString() : 'Fetched: ' + new Date().toLocaleString();
+        }catch(err){
+          el.innerHTML = '<p style="color:#fca5a5">Error loading README: '+escapeHtml(String(err))+'</p>';
+          updatedEl.textContent = '';
+        }
+      }
+
+      document.getElementById('refreshBtn').addEventListener('click', fetchAndRender);
+
+      // D key shortcut to open releases
+      document.addEventListener('keydown', function(e){ if ((e.key === 'd' || e.key === 'D') && !e.metaKey && !e.ctrlKey) { var link = document.querySelector('a[href*="releases/latest"]'); if (link) { window.location = link.href; } }});
+
+      window.addEventListener('load', function(){ document.querySelector('.wrap a')?.focus(); fetchAndRender(); });
+    })();
+  </script>
 </body>
 </html>
