@@ -14,7 +14,7 @@ if not exist .venv\Scripts\activate (
 )
 
 python -m pip install --upgrade pip
-pip install pyinstaller==5.11
+pip install pyinstaller==6.17.0
 
 echo.
 echo Cleaning previous builds...
