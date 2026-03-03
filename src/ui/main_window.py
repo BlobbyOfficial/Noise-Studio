@@ -35,6 +35,9 @@ class MainWindow:
         # Animation state
         self.animation_handles = []
 
+        # Whether Dear PyGui UI has been fully initialized
+        self.ui_ready = False
+
     def run(self):
         """Initialize the UI and start Dear PyGui."""
         dpg.create_context()
@@ -60,6 +63,7 @@ class MainWindow:
 
             dpg.setup_dearpygui()
             dpg.show_viewport()
+            self.ui_ready = True
 
             # Start animations
             self._start_animations()
@@ -69,6 +73,7 @@ class MainWindow:
             logging.exception("Unhandled exception in MainWindow.run: %s", exc)
             raise
         finally:
+            self.ui_ready = False
             try:
                 dpg.destroy_context()
             except Exception:
@@ -292,6 +297,8 @@ class MainWindow:
                 pass
 
     def _update_status(self, message: str):
+        if not self.ui_ready:
+            return
         try:
             dpg.set_value("status_text", message)
         except Exception:
@@ -355,7 +362,7 @@ class MainWindow:
         self.sound_panel.live_preview = app_data
 
     # -------------------------
-    # Export callbacks (optional, placeholder)
+    # Export callbacks
     # -------------------------
     def on_export_image_clicked(self, sender=None, app_data=None):
         """Export the currently generated image to disk (best-effort).
@@ -388,12 +395,6 @@ class MainWindow:
             logging.exception("Failed to export audio: %s", exc)
             self._update_status("Failed to export audio")
 
-    def on_export_sound_clicked(self, sender, app_data):
-        """
-        Export the currently generated audio to disk.
-        """
-        # Placeholder: integrate with export engine
-        print(f"Exporting audio of duration {self.sound_panel.duration}s")
 
     # -------------------------
     # Additional UI helpers
