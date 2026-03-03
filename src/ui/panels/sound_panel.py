@@ -6,9 +6,14 @@ with live preview and professional layout.
 """
 
 import numpy as np
-import sounddevice as sd
 import logging
 from engine.audio_noise import AudioNoiseGenerator
+
+try:
+    import sounddevice as sd
+except Exception as exc:
+    sd = None
+    logging.warning("sounddevice unavailable, audio playback disabled: %s", exc)
 
 class SoundPanel:
     """UI panel for sound noise generation and playback."""
@@ -105,6 +110,9 @@ class SoundPanel:
         audio = self.generate_noise()
 
         if audio is not None:
+            if sd is None:
+                logging.warning("Cannot play audio: sounddevice is unavailable")
+                return
             try:
                 self._stream = sd.OutputStream(
                     samplerate=self.sample_rate,
@@ -129,8 +137,11 @@ class SoundPanel:
     def stop_audio(self, sender=None, app_data=None):
         """Stop audio playback."""
         if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
+            try:
+                self._stream.stop()
+                self._stream.close()
+            except Exception as exc:
+                logging.error("Failed to stop audio stream: %s", exc)
             self._stream = None
             print("Stopped audio playback")
 
@@ -170,4 +181,3 @@ class SoundPanel:
             wav_write(path, self.sample_rate, wav)
         except Exception:
             raise
-
